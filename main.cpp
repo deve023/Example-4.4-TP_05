@@ -1,3 +1,11 @@
+/*
+* 5. Maquina de estados del Teclado Matricial.
+* Se activa con una periodicidad: TIME_INCREMENT_MS.
+* Cada ese intervalo temporal se llama a matrixKeypadUpdate().
+*
+* 
+*/
+
 //=====[Libraries]=============================================================
 
 #include "mbed.h"
@@ -48,6 +56,12 @@ AnalogIn lm35(A1);
 
 DigitalOut keypadRowPins[KEYPAD_NUMBER_OF_ROWS] = {PB_3, PB_5, PC_7, PA_15};
 DigitalIn keypadColPins[KEYPAD_NUMBER_OF_COLS]  = {PB_12, PB_13, PB_15, PC_6};
+
+//FSM State: x\n [13]
+//Accumulated Debounce Time: XX ms\n [33]
+//Key pressed - Row: X Col: X Key Pressed: X\n [43]
+char buffer[43];
+char FSM_output[90];
 
 //=====[Declaration and initialization of public global variables]=============
 
@@ -553,6 +567,9 @@ char matrixKeypadScan()
 
         for( col=0; col<KEYPAD_NUMBER_OF_COLS; col++ ) {
             if( keypadColPins[col] == OFF ) {
+                //printf("Key pressed - Row: %i Col: %i Key Pressed: %c\n", row, col, matrixKeypadIndexToCharArray[row*KEYPAD_NUMBER_OF_ROWS + col]);
+                sprintf(buffer, "Key pressed - Row: %i Col: %i Key Pressed: %c\n", row, col, matrixKeypadIndexToCharArray[row*KEYPAD_NUMBER_OF_ROWS + col]);
+                strcat(FSM_output, buffer);
                 return matrixKeypadIndexToCharArray[row*KEYPAD_NUMBER_OF_ROWS + col];
             }
         }
@@ -565,6 +582,9 @@ char matrixKeypadUpdate()
     char keyDetected = '\0';
     char keyReleased = '\0';
 
+    //printf("FSM state: %i\n", matrixKeypadState);
+    sprintf(buffer, "FSM state: %i\n", matrixKeypadState);
+    strcat(FSM_output, buffer);
     switch( matrixKeypadState ) {
 
     case MATRIX_KEYPAD_SCANNING:
@@ -586,6 +606,8 @@ char matrixKeypadUpdate()
                 matrixKeypadState = MATRIX_KEYPAD_SCANNING;
             }
         }
+        sprintf(buffer, "Accumulated Debounce Time: %i ms\n", accumulatedDebounceMatrixKeypadTime);
+        strcat(FSM_output, buffer);
         accumulatedDebounceMatrixKeypadTime =
             accumulatedDebounceMatrixKeypadTime + TIME_INCREMENT_MS;
         break;
@@ -604,5 +626,7 @@ char matrixKeypadUpdate()
         matrixKeypadInit();
         break;
     }
+    printf(FSM_output);
+    printf("\n");
     return keyReleased;
 }
