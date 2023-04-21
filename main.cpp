@@ -3,7 +3,19 @@
 * Se activa con una periodicidad: TIME_INCREMENT_MS.
 * Cada ese intervalo temporal se llama a matrixKeypadUpdate().
 *
-* 
+* RTC
+* Se configura en la estructura rtcTime y luego se setea con la funcion set_time().
+* La estructura se declara en este codigo main.cpp
+* La funcion set_time() se implementa en /home/studio/workspace/Example 4.4-tp_05/mbed-os/platform/include/platform/mbed_rtc_time.h
+* time(NULL): Lee el tiempo del RTC.
+* ctime() traduce ese 'tiempo' a un formato legible.
+*
+* Al desconectar la placa de la notebook se pierde la informacion. Al volverla a conectar se re inicializa la estructura rtcTime y 
+*     se vuelve a configurar el RTC con set_time.
+* Se pierde la cuenta al desconectar el dispositivo.
+* Esto se podría resolver conectando una pila de arduino para mantener activo el RTC incluso cuando se desconecta la placa.
+* Para hacer esto tiene que estar libre el pin de la placa NUCLEO PB_0 (ADC1_IN18) conectado al pin VBAT (30 o 41 dependiendo del chip Arm Cortex-M3 utilizado)
+* Para esta implementacion ese pin no se utiliza, está libre para utilizar el VBAT mode y mantener el RTC vivo cuando la placa está desconectada.
 */
 
 //=====[Libraries]=============================================================
@@ -34,6 +46,7 @@ typedef enum {
     MATRIX_KEYPAD_KEY_HOLD_PRESSED
 } matrixKeypadState_t;
 
+// RTC
 typedef struct systemEvent {
     time_t seconds;
     char typeOfEvent[EVENT_NAME_MAX_LENGTH];
@@ -54,13 +67,16 @@ UnbufferedSerial uartUsb(USBTX, USBRX, 115200);
 
 AnalogIn lm35(A1);
 
+//vector<DigitalOut> keypadRowPinsV({PB_3, PB_5, PC_7, PA_15});
+//vector<DigitalIn> keypadColPinsV({PB_12, PB_13, PB_15, PC_6});
+
 DigitalOut keypadRowPins[KEYPAD_NUMBER_OF_ROWS] = {PB_3, PB_5, PC_7, PA_15};
 DigitalIn keypadColPins[KEYPAD_NUMBER_OF_COLS]  = {PB_12, PB_13, PB_15, PC_6};
 
 //FSM State: x\n [13]
 //Accumulated Debounce Time: XX ms\n [33]
 //Key pressed - Row: X Col: X Key Pressed: X\n [43]
-char buffer[43];
+char buffer[44];
 char FSM_output[90];
 
 //=====[Declaration and initialization of public global variables]=============
@@ -128,7 +144,7 @@ void lm35ReadingsArrayInit();
 
 void matrixKeypadInit();
 char matrixKeypadScan();
-char matrixKeypadUpdate();
+char matrixKeypadUpdate(); // FSM
 
 //=====[Main function, the program entry point after power on or reset]========
 
@@ -232,7 +248,7 @@ void alarmActivationUpdate()
 void alarmDeactivationUpdate()
 {
     if ( numberOfIncorrectCodes < 5 ) {
-        char keyReleased = matrixKeypadUpdate();
+        char keyReleased = matrixKeypadUpdate(); // FSM
         if( keyReleased != '\0' && keyReleased != '#' ) {
             keyPressed[matrixKeypadCodeIndex] = keyReleased;
             if( matrixKeypadCodeIndex >= NUMBER_OF_KEYS ) {
@@ -358,7 +374,7 @@ void uartTask()
             
         case 's':
         case 'S':
-            struct tm rtcTime;
+            struct tm rtcTime; // RTC
             int strIndex;
                     
             uartUsb.write( "\r\nType four digits for the current year (YYYY): ", 48 );
@@ -416,15 +432,15 @@ void uartTask()
             uartUsb.write( "\r\n", 2 );
 
             rtcTime.tm_isdst = -1;
-            set_time( mktime( &rtcTime ) );
+            set_time( mktime( &rtcTime ) ); // RTC
             uartUsb.write( "Date and time has been set\r\n", 28 );
 
             break;
                         
             case 't':
             case 'T':
-                time_t epochSeconds;
-                epochSeconds = time(NULL);
+                time_t epochSeconds; // RTC
+                epochSeconds = time(NULL); // RTC
                 sprintf ( str, "Date and Time = %s", ctime(&epochSeconds));
                 uartUsb.write( str , strlen(str) );
                 uartUsb.write( "\r\n", 2 );
@@ -437,7 +453,7 @@ void uartTask()
                         arrayOfStoredEvents[i].typeOfEvent);
                     uartUsb.write( str , strlen(str) );
                     sprintf ( str, "Date and Time = %s\r\n",
-                        ctime(&arrayOfStoredEvents[i].seconds));
+                        ctime(&arrayOfStoredEvents[i].seconds)); // RTC
                     uartUsb.write( str , strlen(str) );
                     uartUsb.write( "\r\n", 2 );
                 }
@@ -512,7 +528,7 @@ void systemElementStateUpdate( bool lastState,
             strcat( eventAndStateStr, "_OFF" );
         }
 
-        arrayOfStoredEvents[eventsIndex].seconds = time(NULL);
+        arrayOfStoredEvents[eventsIndex].seconds = time(NULL); // RTC
         strcpy( arrayOfStoredEvents[eventsIndex].typeOfEvent,eventAndStateStr );
         if ( eventsIndex < EVENT_MAX_STORAGE - 1 ) {
             eventsIndex++;
@@ -577,6 +593,7 @@ char matrixKeypadScan()
     return '\0';
 }
 
+// FSM
 char matrixKeypadUpdate()
 {
     char keyDetected = '\0';
@@ -626,7 +643,7 @@ char matrixKeypadUpdate()
         matrixKeypadInit();
         break;
     }
-    printf(FSM_output);
+    printf("%s",FSM_output);
     printf("\n");
     return keyReleased;
 }
