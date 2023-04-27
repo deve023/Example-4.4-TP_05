@@ -22,6 +22,8 @@
 
 #include "mbed.h"
 #include "arm_book_lib.h"
+#include <vector> // Path: /home/studio/mbed-studio-tools/ac6/include/libcxx/vector
+#include <iosfwd>
 
 //=====[Defines]===============================================================
 
@@ -67,11 +69,11 @@ UnbufferedSerial uartUsb(USBTX, USBRX, 115200);
 
 AnalogIn lm35(A1);
 
-//vector<DigitalOut> keypadRowPinsV({PB_3, PB_5, PC_7, PA_15});
-//vector<DigitalIn> keypadColPinsV({PB_12, PB_13, PB_15, PC_6});
+vector<DigitalOut> keypadRowPins({PB_3, PB_5, PC_7, PA_15});
+vector<DigitalIn> keypadColPins({PB_12, PB_13, PB_15, PC_6});
 
-DigitalOut keypadRowPins[KEYPAD_NUMBER_OF_ROWS] = {PB_3, PB_5, PC_7, PA_15};
-DigitalIn keypadColPins[KEYPAD_NUMBER_OF_COLS]  = {PB_12, PB_13, PB_15, PC_6};
+//DigitalOut keypadRowPins[KEYPAD_NUMBER_OF_ROWS] = {PB_3, PB_5, PC_7, PA_15};
+//DigitalIn keypadColPins[KEYPAD_NUMBER_OF_COLS]  = {PB_12, PB_13, PB_15, PC_6};
 
 //FSM State: x\n [13]
 //Accumulated Debounce Time: XX ms\n [33]
